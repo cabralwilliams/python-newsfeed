@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from flask import g
 
 load_dotenv()
 
@@ -15,3 +16,26 @@ print(str(engine))
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
+def init_db(app):
+    Base.metadata.create_all(engine)
+
+    #This makes Flask run the close_db method along with its built-in teardown_appcontext method
+    app.teardown_appcontext(close_db)
+
+#Returns a sessionmaker object
+def get_db():
+    if 'db' not in g:
+        # store db connection in app context
+        g.db = Session()
+
+    # A new db connection will only be created on the first invocation of this function
+    return g.db
+
+#Close the database connection
+def close_db(e=None):
+    #When the function is called, the db property is removed from the global context
+    db = g.pop('db', None)
+
+    #If db is not None, close the db - guarantees that this won't run on every instance
+    if db is not None:
+        db.close()
